@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OmniTool Dashboard</title>
+  <title>OmniBar Everything App</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -12,38 +12,131 @@
       --text: #f8fafc;
       --muted: #94a3b8;
       --border: #334155;
+      --highlight: #0284c7;
+    }
+    .light-theme {
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --accent: #0284c7;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --highlight: #e2e8f0;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 20px; }
-    header { text-align: center; margin-bottom: 24px; }
-    header h1 { font-size: 1.8rem; color: var(--accent); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-    .card h2 { font-size: 1.1rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-    input, select, textarea, button { background: #0b1120; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-size: 0.9rem; }
-    button { cursor: pointer; background: #0284c7; border: none; font-weight: 600; }
-    button:hover { background: var(--accent); color: #000; }
-    .row { display: flex; gap: 8px; }
-    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-    canvas { background: #0b1120; border: 1px solid var(--border); border-radius: 4px; touch-action: none; cursor: crosshair; }
+    body { background: var(--bg); color: var(--text); padding: 24px 16px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    
+    .container { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Omni Input Bar */
+    .bar-wrapper { position: relative; width: 100%; }
+    #omni-bar {
+      width: 100%;
+      background: var(--card-bg);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 1.1rem;
+      color: var(--text);
+      outline: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    #omni-bar:focus { border-color: var(--accent); }
+
+    /* Slash Menu Dropdown */
+    .slash-list {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+      display: none;
+      z-index: 50;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .slash-list.active { display: block; }
+    .slash-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .slash-item:hover { background: var(--highlight); color: #fff; }
+    .slash-cmd { font-weight: bold; color: var(--accent); }
+    .slash-item:hover .slash-cmd { color: #fff; }
+    .slash-desc { font-size: 0.85rem; color: var(--muted); }
+
+    /* Active Tool Panels */
+    .panel {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .panel.active { display: flex; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; font-weight: bold; color: var(--accent); }
+    .panel-close { cursor: pointer; color: var(--muted); font-size: 1.2rem; }
+
+    input, textarea, select, button {
+      background: #0002;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    button { cursor: pointer; background: var(--accent); color: #000; font-weight: 600; border: none; }
+    button:hover { opacity: 0.9; }
+
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    canvas { background: #0002; border: 1px solid var(--border); border-radius: 6px; touch-action: none; cursor: crosshair; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>OmniTool Dashboard</h1>
-    <p style="color: var(--muted); font-size: 0.85rem;">All-in-one local offline workspace</p>
-  </header>
+  <div class="container">
+    <div class="bar-wrapper">
+      <input type="text" id="omni-bar" placeholder="Type / for commands, or run math (e.g. 24*7)..." autocomplete="off">
+      <div id="slash-dropdown" class="slash-list"></div>
+    </div>
 
-  <div class="grid">
-    <div class="card">
-      <h2>Persistent Notepad</h2>
-      <textarea id="notepad" rows="6" placeholder="Type here... auto-saves instantly."></textarea>
+    <div id="status-box" style="font-size: 0.9rem; color: var(--muted); padding-left: 4px;">Press "/" to bring up the command menu.</div>
+
+    <div id="panel-timer" class="panel">
+      <div class="panel-head">
+        <span>Countdown Timer</span>
+        <span class="panel-close" onclick="closePanel('panel-timer')">&times;</span>
+      </div>
+      <div id="timer-display" style="font-size: 2.2rem; text-align: center; font-family: monospace;">00:00</div>
+      <div style="display: flex; gap: 8px;">
+        <input type="number" id="timer-input-sec" placeholder="Seconds" style="flex:1;">
+        <button onclick="startTimer()">Start</button>
+        <button style="background: #e11d48; color:#fff;" onclick="resetTimer()">Reset</button>
+      </div>
+    </div>
+
+    <div id="panel-note" class="panel">
+      <div class="panel-head">
+        <span>Persistent Scratchpad</span>
+        <span class="panel-close" onclick="closePanel('panel-note')">&times;</span>
+      </div>
+      <textarea id="notepad" rows="6" placeholder="Auto-saves local notes..."></textarea>
       <button onclick="localStorage.removeItem('omni_note'); document.getElementById('notepad').value='';">Clear Note</button>
     </div>
 
-    <div class="card">
-      <h2>Calculator</h2>
+    <div id="panel-calc" class="panel">
+      <div class="panel-head">
+        <span>Calculator</span>
+        <span class="panel-close" onclick="closePanel('panel-calc')">&times;</span>
+      </div>
       <input type="text" id="calc-display" readonly style="text-align: right; font-family: monospace;">
       <div class="calc-grid">
         <button onclick="pressCalc('7')">7</button><button onclick="pressCalc('8')">8</button><button onclick="pressCalc('9')">9</button><button onclick="pressCalc('/')">/</button>
@@ -51,62 +144,169 @@
         <button onclick="pressCalc('1')">1</button><button onclick="pressCalc('2')">2</button><button onclick="pressCalc('3')">3</button><button onclick="pressCalc('-')">-</button>
         <button onclick="pressCalc('0')">0</button><button onclick="pressCalc('.')">.</button><button onclick="evalCalc()">=</button><button onclick="pressCalc('+')">+</button>
       </div>
-      <button style="background: #e11d48;" onclick="document.getElementById('calc-display').value=''">Clear</button>
+      <button style="background: #e11d48; color:#fff;" onclick="document.getElementById('calc-display').value=''">Clear</button>
     </div>
 
-    <div class="card">
-      <h2>Stopwatch</h2>
-      <div id="stopwatch-display" style="font-size: 1.8rem; text-align: center; font-family: monospace; margin: 10px 0;">00:00.0</div>
-      <div class="row">
-        <button style="flex:1" onclick="startStopwatch()">Start</button>
-        <button style="flex:1" onclick="pauseStopwatch()">Stop</button>
-        <button style="flex:1; background: #64748b;" onclick="resetStopwatch()">Reset</button>
+    <div id="panel-draw" class="panel">
+      <div class="panel-head">
+        <span>Touch Canvas</span>
+        <span class="panel-close" onclick="closePanel('panel-draw')">&times;</span>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>Password Generator</h2>
-      <div class="row">
-        <input type="number" id="pass-len" value="16" min="6" max="64" style="width: 70px;">
-        <button style="flex: 1;" onclick="genPass()">Generate</button>
-      </div>
-      <input type="text" id="pass-out" readonly placeholder="Output">
-    </div>
-
-    <div class="card">
-      <h2>Quick Unit Converter (Length)</h2>
-      <input type="number" id="unit-val" placeholder="Value" oninput="convertUnit()">
-      <div class="row">
-        <select id="unit-from" onchange="convertUnit()" style="flex:1;">
-          <option value="m">Meters</option>
-          <option value="ft">Feet</option>
-          <option value="km">Kilometers</option>
-          <option value="mi">Miles</option>
-        </select>
-        <select id="unit-to" onchange="convertUnit()" style="flex:1;">
-          <option value="ft">Feet</option>
-          <option value="m">Meters</option>
-          <option value="km">Kilometers</option>
-          <option value="mi">Miles</option>
-        </select>
-      </div>
-      <div id="unit-result" style="font-weight: bold; color: var(--accent);">Result: -</div>
-    </div>
-
-    <div class="card">
-      <h2>Scratchpad Canvas</h2>
-      <canvas id="board" width="280" height="130"></canvas>
+      <canvas id="board" width="550" height="200" style="width: 100%;"></canvas>
       <button onclick="clearCanvas()">Clear Canvas</button>
+    </div>
+
+    <div id="panel-sw" class="panel">
+      <div class="panel-head">
+        <span>Stopwatch</span>
+        <span class="panel-close" onclick="closePanel('panel-sw')">&times;</span>
+      </div>
+      <div id="sw-display" style="font-size: 2rem; text-align: center; font-family: monospace;">00:00.0</div>
+      <div style="display: flex; gap: 8px;">
+        <button style="flex:1" onclick="startSW()">Start</button>
+        <button style="flex:1" onclick="stopSW()">Stop</button>
+        <button style="flex:1; background: #64748b; color:#fff;" onclick="resetSW()">Reset</button>
+      </div>
     </div>
   </div>
 
   <script>
-    // Notepad
+    const bar = document.getElementById('omni-bar');
+    const dropdown = document.getElementById('slash-dropdown');
+    const statusBox = document.getElementById('status-box');
+
+    // Slash command registry
+    const commands = [
+      { cmd: '/timer', desc: 'Open Countdown Timer', action: () => openPanel('panel-timer') },
+      { cmd: '/stopwatch', desc: 'Open Stopwatch', action: () => openPanel('panel-sw') },
+      { cmd: '/notes', desc: 'Open persistent notepad', action: () => openPanel('panel-note') },
+      { cmd: '/draw', desc: 'Open scratchpad canvas', action: () => openPanel('panel-draw') },
+      { cmd: '/calc', desc: 'Open full calculator', action: () => openPanel('panel-calc') },
+      { cmd: '/pass', desc: 'Generate a strong password to clipboard', action: quickPass },
+      { cmd: '/theme', desc: 'Toggle Dark / Light UI theme', action: () => document.body.classList.toggle('light-theme') },
+      { cmd: '/clear', desc: 'Close all open active panels', action: closeAllPanels }
+    ];
+
+    bar.addEventListener('input', () => {
+      const val = bar.value;
+      if (val.startsWith('/')) {
+        const query = val.slice(1).toLowerCase();
+        const matches = commands.filter(c => c.cmd.includes(query) || c.desc.toLowerCase().includes(query));
+        renderDropdown(matches);
+      } else {
+        dropdown.classList.remove('active');
+        // Quick inline calculator fallback
+        if (val.trim()) {
+          try {
+            const res = Function('"use strict";return (' + val + ')')();
+            if (res !== undefined && !isNaN(res)) statusBox.innerText = `Result: ${res}`;
+          } catch(e) {
+            statusBox.innerText = 'Press "/" to bring up the command menu.';
+          }
+        } else {
+          statusBox.innerText = 'Press "/" to bring up the command menu.';
+        }
+      }
+    });
+
+    bar.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = bar.value.trim();
+        const match = commands.find(c => c.cmd === val);
+        if (match) {
+          match.action();
+          bar.value = '';
+          dropdown.classList.remove('active');
+        }
+      }
+    });
+
+    function renderDropdown(list) {
+      if (!list.length) { dropdown.classList.remove('active'); return; }
+      dropdown.innerHTML = list.map(c => `
+        <div class="slash-item" onclick="execCommand('${c.cmd}')">
+          <span class="slash-cmd">${c.cmd}</span>
+          <span class="slash-desc">${c.desc}</span>
+        </div>
+      `).join('');
+      dropdown.classList.add('active');
+    }
+
+    function execCommand(cmd) {
+      const match = commands.find(c => c.cmd === cmd);
+      if (match) match.action();
+      bar.value = '';
+      dropdown.classList.remove('active');
+    }
+
+    function openPanel(id) {
+      document.getElementById(id).classList.add('active');
+    }
+    function closePanel(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+    function closeAllPanels() {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    }
+
+    // Pass generator action
+    function quickPass() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
+      let pass = '';
+      for (let i = 0; i < 16; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+      navigator.clipboard.writeText(pass).catch(() => {});
+      statusBox.innerText = `Copied generated password: ${pass}`;
+    }
+
+    // Countdown Timer logic
+    let timerInterval = null;
+    let timerRemaining = 0;
+    function startTimer() {
+      clearInterval(timerInterval);
+      const input = document.getElementById('timer-input-sec');
+      if (!timerRemaining) timerRemaining = parseInt(input.value) || 0;
+      if (timerRemaining <= 0) return;
+
+      timerInterval = setInterval(() => {
+        timerRemaining--;
+        const min = Math.floor(timerRemaining / 60).toString().padStart(2, '0');
+        const sec = (timerRemaining % 60).toString().padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${min}:${sec}`;
+        if (timerRemaining <= 0) {
+          clearInterval(timerInterval);
+          statusBox.innerText = "Timer ended 💀!";
+        }
+      }, 1000);
+    }
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerRemaining = 0;
+      document.getElementById('timer-display').innerText = "00:00";
+    }
+
+    // Stopwatch logic
+    let swTime = 0, swInterval = null;
+    function updateSW() {
+      const ms = Math.floor((swTime % 1000) / 100);
+      const sec = Math.floor((swTime / 1000) % 60).toString().padStart(2, '0');
+      const min = Math.floor(swTime / 60000).toString().padStart(2, '0');
+      document.getElementById('sw-display').innerText = `${min}:${sec}.${ms}`;
+    }
+    function startSW() {
+      if (!swInterval) {
+        const start = Date.now() - swTime;
+        swInterval = setInterval(() => { swTime = Date.now() - start; updateSW(); }, 100);
+      }
+    }
+    function stopSW() { clearInterval(swInterval); swInterval = null; }
+    function resetSW() { stopSW(); swTime = 0; updateSW(); }
+
+    // Persistent Notes logic
     const pad = document.getElementById('notepad');
     pad.value = localStorage.getItem('omni_note') || '';
     pad.addEventListener('input', () => localStorage.setItem('omni_note', pad.value));
 
-    // Calculator
+    // Calculator logic
     const calc = document.getElementById('calc-display');
     function pressCalc(v) { calc.value += v; }
     function evalCalc() {
@@ -114,44 +314,7 @@
       catch { calc.value = 'Error'; }
     }
 
-    // Stopwatch
-    let swTime = 0, swInterval = null;
-    function updateSW() {
-      const ms = Math.floor((swTime % 1000) / 100);
-      const sec = Math.floor((swTime / 1000) % 60).toString().padStart(2, '0');
-      const min = Math.floor(swTime / 60000).toString().padStart(2, '0');
-      document.getElementById('stopwatch-display').innerText = `${min}:${sec}.${ms}`;
-    }
-    function startStopwatch() {
-      if (!swInterval) {
-        const start = Date.now() - swTime;
-        swInterval = setInterval(() => { swTime = Date.now() - start; updateSW(); }, 100);
-      }
-    }
-    function pauseStopwatch() { clearInterval(swInterval); swInterval = null; }
-    function resetStopwatch() { pauseStopwatch(); swTime = 0; updateSW(); }
-
-    // Password Gen
-    function genPass() {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|';
-      const len = parseInt(document.getElementById('pass-len').value) || 16;
-      let out = '';
-      for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
-      document.getElementById('pass-out').value = out;
-    }
-
-    // Converter
-    const rates = { m: 1, ft: 0.3048, km: 1000, mi: 1609.34 };
-    function convertUnit() {
-      const val = parseFloat(document.getElementById('unit-val').value);
-      if (isNaN(val)) return document.getElementById('unit-result').innerText = 'Result: -';
-      const from = document.getElementById('unit-from').value;
-      const to = document.getElementById('unit-to').value;
-      const res = (val * rates[from]) / rates[to];
-      document.getElementById('unit-result').innerText = `Result: ${res.toFixed(4)} ${to}`;
-    }
-
-    // Touch & Mouse Pointer Canvas
+    // Touch & Pointer Canvas logic
     const canvas = document.getElementById('board');
     const ctx = canvas.getContext('2d');
     let painting = false;
@@ -162,35 +325,30 @@
 
     function getCoords(e) {
       const r = canvas.getBoundingClientRect();
-      return [e.clientX - r.left, e.clientY - r.top];
+      const scaleX = canvas.width / r.width;
+      const scaleY = canvas.height / r.height;
+      return [(e.clientX - r.left) * scaleX, (e.clientY - r.top) * scaleY];
     }
-
     canvas.addEventListener('pointerdown', (e) => {
       painting = true;
       canvas.setPointerCapture(e.pointerId);
       ctx.beginPath();
       ctx.moveTo(...getCoords(e));
     });
-
     canvas.addEventListener('pointermove', (e) => {
       if (!painting) return;
       ctx.lineTo(...getCoords(e));
       ctx.stroke();
     });
-
     function stopDrawing(e) {
       if (painting) {
         painting = false;
         try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
       }
     }
-
     canvas.addEventListener('pointerup', stopDrawing);
     canvas.addEventListener('pointercancel', stopDrawing);
-
-    function clearCanvas() { 
-      ctx.clearRect(0, 0, canvas.width, canvas.height); 
-    }
+    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
   </script>
 </body>
 </html>
