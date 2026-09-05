@@ -105,10 +105,54 @@
     .calc-grid button { font-size: 1.15rem; padding: 12px 0; }
     canvas { background: #0002; border: 1px solid var(--border); border-radius: 6px; touch-action: none; cursor: crosshair; }
 
-    /* Todo list item styles */
     .todo-item { display: flex; align-items: center; gap: 8px; background: #0002; padding: 8px; border-radius: 4px; border: 1px solid var(--border); }
     .todo-item.done span { text-decoration: line-through; opacity: 0.5; }
     .todo-item span { flex: 1; word-break: break-word; }
+
+    /* Visual Coin & Die CSS */
+    .visual-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 16px;
+      perspective: 800px;
+    }
+
+    /* Coin */
+    .coin {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: #eab308;
+      border: 4px dashed #ca8a04;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: #713f12;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+      transition: transform 1.2s cubic-bezier(0.15, 0.9, 0.3, 1.2);
+      transform-style: preserve-3d;
+    }
+
+    /* Die */
+    .die {
+      width: 80px;
+      height: 80px;
+      background: #f8fafc;
+      color: #0f172a;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      border: 2px solid #cbd5e1;
+      transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1.2);
+    }
   </style>
 </head>
 <body>
@@ -120,6 +164,22 @@
     </div>
 
     <div id="status-box" style="font-size: 0.9rem; color: var(--muted); padding-left: 4px;">Press "/" to bring up the command menu.</div>
+
+    <div id="panel-rng" class="panel">
+      <div class="panel-head">
+        <span id="rng-title">Randomizer</span>
+        <span class="panel-close" onclick="closePanel('panel-rng')">&times;</span>
+      </div>
+      <div class="visual-stage">
+        <div id="visual-coin" class="coin" style="display: none;">HEADS</div>
+        <div id="visual-die" class="die" style="display: none;">1</div>
+        <div id="rng-label" style="font-weight: bold; font-size: 1.1rem; color: var(--accent);">Ready</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button style="flex: 1;" onclick="triggerCoinFlip()">Flip Coin Again</button>
+        <button style="flex: 1;" onclick="triggerDieRoll()">Roll Die Again</button>
+      </div>
+    </div>
 
     <div id="panel-timer" class="panel">
       <div class="panel-head">
@@ -254,6 +314,8 @@
 
     // Slash command registry
     const commands = [
+      { cmd: '/flip', desc: 'Visual Coin Flip (Animated)', action: showCoinFlip },
+      { cmd: '/roll', desc: 'Visual Dice Roll (Animated)', action: showDieRoll },
       { cmd: '/todo', desc: 'Open interactive task list', action: () => openPanel('panel-todo') },
       { cmd: '/qr', desc: 'Generate QR code', action: () => openPanel('panel-qr') },
       { cmd: '/count', desc: 'Word & sentence counter', action: () => openPanel('panel-count') },
@@ -263,8 +325,6 @@
       { cmd: '/notes', desc: 'Open persistent notepad', action: () => openPanel('panel-note') },
       { cmd: '/draw', desc: 'Open scratchpad canvas', action: () => openPanel('panel-draw') },
       { cmd: '/calc', desc: 'Open full calculator', action: () => openPanel('panel-calc') },
-      { cmd: '/flip', desc: 'Flip a coin (Heads/Tails)', action: flipCoin },
-      { cmd: '/roll', desc: 'Roll a standard 6-sided die', action: rollDice },
       { cmd: '/pass', desc: 'Generate strong password to clipboard', action: quickPass },
       { cmd: '/theme', desc: 'Toggle Dark / Light UI theme', action: () => document.body.classList.toggle('light-theme') },
       { cmd: '/clear', desc: 'Close all open active panels', action: closeAllPanels }
@@ -363,15 +423,56 @@
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     }
 
-    // Mini Utility Actions
-    function flipCoin() {
-      const res = Math.random() < 0.5 ? '🪙 Result: Heads' : '🪙 Result: Tails';
-      statusBox.innerText = res;
+    // Visual Flip & Roll Engine
+    let coinDeg = 0;
+    let dieRot = 0;
+
+    function showCoinFlip() {
+      openPanel('panel-rng');
+      document.getElementById('rng-title').innerText = 'Coin Flipper';
+      document.getElementById('visual-die').style.display = 'none';
+      document.getElementById('visual-coin').style.display = 'flex';
+      triggerCoinFlip();
     }
 
-    function rollDice() {
-      const roll = Math.floor(Math.random() * 6) + 1;
-      statusBox.innerText = `🎲 You rolled a ${roll}!`;
+    function triggerCoinFlip() {
+      const coin = document.getElementById('visual-coin');
+      const label = document.getElementById('rng-label');
+      label.innerText = 'Flipping...';
+      
+      const isHeads = Math.random() < 0.5;
+      coinDeg += 1800 + (isHeads ? 0 : 180);
+      coin.style.transform = `rotateY(${coinDeg}deg)`;
+      
+      setTimeout(() => {
+        coin.innerText = isHeads ? 'HEADS' : 'TAILS';
+        label.innerText = isHeads ? '🪙 Result: HEADS' : '🪙 Result: TAILS';
+      }, 1000);
+    }
+
+    function showDieRoll() {
+      openPanel('panel-rng');
+      document.getElementById('rng-title').innerText = 'Dice Roller';
+      document.getElementById('visual-coin').style.display = 'none';
+      document.getElementById('visual-die').style.display = 'grid';
+      triggerDieRoll();
+    }
+
+    const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+    function triggerDieRoll() {
+      const die = document.getElementById('visual-die');
+      const label = document.getElementById('rng-label');
+      label.innerText = 'Rolling...';
+
+      dieRot += 720;
+      die.style.transform = `rotate(${dieRot}deg) scale(0.7)`;
+
+      setTimeout(() => {
+        const val = Math.floor(Math.random() * 6) + 1;
+        die.style.transform = `rotate(${dieRot}deg) scale(1)`;
+        die.innerText = diceFaces[val - 1];
+        label.innerText = `🎲 You rolled a ${val}!`;
+      }, 600);
     }
 
     function quickPass() {
@@ -427,7 +528,7 @@
       document.getElementById('stat-sentences').innerText = `Sentences: ${sentences}`;
     }
 
-    // QR Code Generator (Uses SVG-based public endpoint)
+    // QR Code Generator
     function generateQR() {
       const val = document.getElementById('qr-input').value.trim();
       if (!val) return;
