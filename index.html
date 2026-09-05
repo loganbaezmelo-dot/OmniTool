@@ -65,6 +65,7 @@
       display: flex;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
+      user-select: none;
     }
     .slash-item:hover { background: var(--highlight); color: #fff; }
     .slash-cmd { font-weight: bold; color: var(--accent); }
@@ -195,7 +196,6 @@
         renderDropdown(matches);
       } else {
         dropdown.classList.remove('active');
-        // Quick inline calculator fallback
         if (val.trim()) {
           try {
             const res = Function('"use strict";return (' + val + ')')();
@@ -222,22 +222,38 @@
     });
 
     function renderDropdown(list) {
-      if (!list.length) { dropdown.classList.remove('active'); return; }
-      dropdown.innerHTML = list.map(c => `
-        <div class="slash-item" onclick="execCommand('${c.cmd}')">
+      if (!list.length) { 
+        dropdown.classList.remove('active'); 
+        return; 
+      }
+      
+      dropdown.innerHTML = '';
+      list.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'slash-item';
+        item.innerHTML = `
           <span class="slash-cmd">${c.cmd}</span>
           <span class="slash-desc">${c.desc}</span>
-        </div>
-      `).join('');
+        `;
+        
+        item.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          c.action();
+          bar.value = '';
+          dropdown.classList.remove('active');
+        });
+
+        dropdown.appendChild(item);
+      });
+
       dropdown.classList.add('active');
     }
 
-    function execCommand(cmd) {
-      const match = commands.find(c => c.cmd === cmd);
-      if (match) match.action();
-      bar.value = '';
-      dropdown.classList.remove('active');
-    }
+    document.addEventListener('pointerdown', (e) => {
+      if (!dropdown.contains(e.target) && e.target !== bar) {
+        dropdown.classList.remove('active');
+      }
+    });
 
     function openPanel(id) {
       document.getElementById(id).classList.add('active');
