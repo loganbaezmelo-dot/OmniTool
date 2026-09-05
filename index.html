@@ -151,25 +151,46 @@
       document.getElementById('unit-result').innerText = `Result: ${res.toFixed(4)} ${to}`;
     }
 
-    // Canvas
+    // Touch & Mouse Pointer Canvas
     const canvas = document.getElementById('board');
     const ctx = canvas.getContext('2d');
     let painting = false;
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     function getCoords(e) {
       const r = canvas.getBoundingClientRect();
       return [e.clientX - r.left, e.clientY - r.top];
     }
-    canvas.addEventListener('mousedown', e => { painting = true; ctx.beginPath(); ctx.moveTo(...getCoords(e)); });
-    window.addEventListener('mouseup', () => painting = false);
-    canvas.addEventListener('mousemove', e => {
+
+    canvas.addEventListener('pointerdown', (e) => {
+      painting = true;
+      canvas.setPointerCapture(e.pointerId);
+      ctx.beginPath();
+      ctx.moveTo(...getCoords(e));
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
       if (!painting) return;
       ctx.lineTo(...getCoords(e));
       ctx.stroke();
     });
-    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function stopDrawing(e) {
+      if (painting) {
+        painting = false;
+        try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+      }
+    }
+
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointercancel', stopDrawing);
+
+    function clearCanvas() { 
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
+    }
   </script>
 </body>
 </html>
