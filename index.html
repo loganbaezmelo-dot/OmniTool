@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OmniTool Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; }
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 1.8rem; color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .card h2 { font-size: 1.1rem; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    input, select, textarea, button { background: #0b1120; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-size: 0.9rem; }
+    button { cursor: pointer; background: #0284c7; border: none; font-weight: 600; }
+    button:hover { background: var(--accent); color: #000; }
+    .row { display: flex; gap: 8px; }
+    .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    canvas { background: #0b1120; border: 1px solid var(--border); border-radius: 4px; touch-action: none; cursor: crosshair; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>OmniTool Dashboard</h1>
+    <p style="color: var(--muted); font-size: 0.85rem;">All-in-one local offline workspace</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Persistent Notepad</h2>
+      <textarea id="notepad" rows="6" placeholder="Type here... auto-saves instantly."></textarea>
+      <button onclick="localStorage.removeItem('omni_note'); document.getElementById('notepad').value='';">Clear Note</button>
+    </div>
+
+    <div class="card">
+      <h2>Calculator</h2>
+      <input type="text" id="calc-display" readonly style="text-align: right; font-family: monospace;">
+      <div class="calc-grid">
+        <button onclick="pressCalc('7')">7</button><button onclick="pressCalc('8')">8</button><button onclick="pressCalc('9')">9</button><button onclick="pressCalc('/')">/</button>
+        <button onclick="pressCalc('4')">4</button><button onclick="pressCalc('5')">5</button><button onclick="pressCalc('6')">6</button><button onclick="pressCalc('*')">*</button>
+        <button onclick="pressCalc('1')">1</button><button onclick="pressCalc('2')">2</button><button onclick="pressCalc('3')">3</button><button onclick="pressCalc('-')">-</button>
+        <button onclick="pressCalc('0')">0</button><button onclick="pressCalc('.')">.</button><button onclick="evalCalc()">=</button><button onclick="pressCalc('+')">+</button>
+      </div>
+      <button style="background: #e11d48;" onclick="document.getElementById('calc-display').value=''">Clear</button>
+    </div>
+
+    <div class="card">
+      <h2>Stopwatch</h2>
+      <div id="stopwatch-display" style="font-size: 1.8rem; text-align: center; font-family: monospace; margin: 10px 0;">00:00.0</div>
+      <div class="row">
+        <button style="flex:1" onclick="startStopwatch()">Start</button>
+        <button style="flex:1" onclick="pauseStopwatch()">Stop</button>
+        <button style="flex:1; background: #64748b;" onclick="resetStopwatch()">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Password Generator</h2>
+      <div class="row">
+        <input type="number" id="pass-len" value="16" min="6" max="64" style="width: 70px;">
+        <button style="flex: 1;" onclick="genPass()">Generate</button>
+      </div>
+      <input type="text" id="pass-out" readonly placeholder="Output">
+    </div>
+
+    <div class="card">
+      <h2>Quick Unit Converter (Length)</h2>
+      <input type="number" id="unit-val" placeholder="Value" oninput="convertUnit()">
+      <div class="row">
+        <select id="unit-from" onchange="convertUnit()" style="flex:1;">
+          <option value="m">Meters</option>
+          <option value="ft">Feet</option>
+          <option value="km">Kilometers</option>
+          <option value="mi">Miles</option>
+        </select>
+        <select id="unit-to" onchange="convertUnit()" style="flex:1;">
+          <option value="ft">Feet</option>
+          <option value="m">Meters</option>
+          <option value="km">Kilometers</option>
+          <option value="mi">Miles</option>
+        </select>
+      </div>
+      <div id="unit-result" style="font-weight: bold; color: var(--accent);">Result: -</div>
+    </div>
+
+    <div class="card">
+      <h2>Scratchpad Canvas</h2>
+      <canvas id="board" width="280" height="130"></canvas>
+      <button onclick="clearCanvas()">Clear Canvas</button>
+    </div>
+  </div>
+
+  <script>
+    // Notepad
+    const pad = document.getElementById('notepad');
+    pad.value = localStorage.getItem('omni_note') || '';
+    pad.addEventListener('input', () => localStorage.setItem('omni_note', pad.value));
+
+    // Calculator
+    const calc = document.getElementById('calc-display');
+    function pressCalc(v) { calc.value += v; }
+    function evalCalc() {
+      try { calc.value = Function('"use strict";return (' + calc.value + ')')(); }
+      catch { calc.value = 'Error'; }
+    }
+
+    // Stopwatch
+    let swTime = 0, swInterval = null;
+    function updateSW() {
+      const ms = Math.floor((swTime % 1000) / 100);
+      const sec = Math.floor((swTime / 1000) % 60).toString().padStart(2, '0');
+      const min = Math.floor(swTime / 60000).toString().padStart(2, '0');
+      document.getElementById('stopwatch-display').innerText = `${min}:${sec}.${ms}`;
+    }
+    function startStopwatch() {
+      if (!swInterval) {
+        const start = Date.now() - swTime;
+        swInterval = setInterval(() => { swTime = Date.now() - start; updateSW(); }, 100);
+      }
+    }
+    function pauseStopwatch() { clearInterval(swInterval); swInterval = null; }
+    function resetStopwatch() { pauseStopwatch(); swTime = 0; updateSW(); }
+
+    // Password Gen
+    function genPass() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|';
+      const len = parseInt(document.getElementById('pass-len').value) || 16;
+      let out = '';
+      for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      document.getElementById('pass-out').value = out;
+    }
+
+    // Converter
+    const rates = { m: 1, ft: 0.3048, km: 1000, mi: 1609.34 };
+    function convertUnit() {
+      const val = parseFloat(document.getElementById('unit-val').value);
+      if (isNaN(val)) return document.getElementById('unit-result').innerText = 'Result: -';
+      const from = document.getElementById('unit-from').value;
+      const to = document.getElementById('unit-to').value;
+      const res = (val * rates[from]) / rates[to];
+      document.getElementById('unit-result').innerText = `Result: ${res.toFixed(4)} ${to}`;
+    }
+
+    // Canvas
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    let painting = false;
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+
+    function getCoords(e) {
+      const r = canvas.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    }
+    canvas.addEventListener('mousedown', e => { painting = true; ctx.beginPath(); ctx.moveTo(...getCoords(e)); });
+    window.addEventListener('mouseup', () => painting = false);
+    canvas.addEventListener('mousemove', e => {
+      if (!painting) return;
+      ctx.lineTo(...getCoords(e));
+      ctx.stroke();
+    });
+    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+  </script>
+</body>
+</html>
