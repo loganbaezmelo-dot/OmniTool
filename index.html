@@ -214,7 +214,7 @@
 
     <div id="panel-dict" class="panel">
       <div class="panel-head">
-        <span>Dictionary Lookup</span>
+        <span>Dictionary Lookup (Datamuse API)</span>
         <span class="panel-close" onclick="closePanel('panel-dict')">&times;</span>
       </div>
       <div style="display:flex; gap:6px;">
@@ -466,7 +466,7 @@
       { cmd: '/weather', desc: 'Live Weather (Open-Meteo API)', action: () => openPanel('panel-weather') },
       { cmd: '/crypto', desc: 'Live Crypto Prices (CoinGecko API)', action: () => { openPanel('panel-crypto'); fetchCrypto(); } },
       { cmd: '/ip', desc: 'Public IP & Geo Scanner API', action: () => { openPanel('panel-ip'); fetchIP(); } },
-      { cmd: '/dict', desc: 'Free English Dictionary API', action: () => openPanel('panel-dict') },
+      { cmd: '/dict', desc: 'Dictionary definitions (Datamuse API)', action: () => openPanel('panel-dict') },
       { cmd: '/fact', desc: 'Random Facts API', action: () => { openPanel('panel-fact'); fetchFact(); } },
       { cmd: '/joke', desc: 'Programming & Dad Jokes API', action: () => { openPanel('panel-joke'); fetchJoke(); } },
       { cmd: '/color', desc: 'Color Picker & Hex/RGB palette', action: () => { openPanel('panel-color'); updateColor('#38bdf8'); } },
@@ -639,7 +639,7 @@
       }
     }
 
-    // API 4: Dictionary (DictionaryAPI)
+    // API 4: Dictionary (Datamuse API)
     async function fetchDefinition() {
       const word = document.getElementById('dict-word').value.trim();
       const out = document.getElementById('dict-out');
@@ -647,22 +647,24 @@
       out.style.display = 'block';
       out.innerText = 'Searching dictionary...';
       try {
-        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        const res = await fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=dp&max=1`);
         const data = await res.json();
-        if (data.title) {
-          out.innerText = 'No definition found.';
+        if (!data.length || !data[0].defs || !data[0].defs.length) {
+          out.innerText = `No definitions found for "${word}".`;
           return;
         }
-        const entry = data[0];
-        const def = entry.meanings[0].definitions[0].definition;
-        const part = entry.meanings[0].partOfSpeech;
+        const item = data[0];
+        const cleanDefs = item.defs.map(d => {
+          const [type, def] = d.split('\t');
+          return `<div>• <strong style="color:var(--accent);">${type}</strong>: ${def}</div>`;
+        }).join('');
+
         out.innerHTML = `
-          <strong>${entry.word}</strong> <em>(${part})</em><br>
-          ${entry.phonetic ? `<span>${entry.phonetic}</span><br>` : ''}
-          <div style="margin-top: 6px;">${def}</div>
+          <div style="font-size: 1.1rem; margin-bottom: 6px;"><strong>${item.word}</strong> ${item.tags ? `<span style="color:var(--muted); font-size:0.85rem;">(${item.tags.join(', ')})</span>` : ''}</div>
+          <div style="display:flex; flex-direction:column; gap:4px;">${cleanDefs}</div>
         `;
       } catch(err) {
-        out.innerText = 'Dictionary API error.';
+        out.innerText = 'Failed to connect to dictionary service.';
       }
     }
 
