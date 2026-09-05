@@ -52,21 +52,25 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
-      max-height: 260px;
+      max-height: 220px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       display: none;
       z-index: 50;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
     .slash-list.active { display: block; }
     .slash-item {
-      padding: 10px 14px;
+      padding: 12px 14px;
       cursor: pointer;
       display: flex;
       justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid var(--border);
       user-select: none;
     }
+    .slash-item:last-child { border-bottom: none; }
     .slash-item:hover { background: var(--highlight); color: #fff; }
     .slash-cmd { font-weight: bold; color: var(--accent); }
     .slash-item:hover .slash-cmd { color: #fff; }
@@ -183,7 +187,7 @@
       { cmd: '/notes', desc: 'Open persistent notepad', action: () => openPanel('panel-note') },
       { cmd: '/draw', desc: 'Open scratchpad canvas', action: () => openPanel('panel-draw') },
       { cmd: '/calc', desc: 'Open full calculator', action: () => openPanel('panel-calc') },
-      { cmd: '/pass', desc: 'Generate a strong password to clipboard', action: quickPass },
+      { cmd: '/pass', desc: 'Generate strong password to clipboard', action: quickPass },
       { cmd: '/theme', desc: 'Toggle Dark / Light UI theme', action: () => document.body.classList.toggle('light-theme') },
       { cmd: '/clear', desc: 'Close all open active panels', action: closeAllPanels }
     ];
@@ -236,11 +240,27 @@
           <span class="slash-desc">${c.desc}</span>
         `;
         
+        let startY = 0;
+        let isDrag = false;
+
+        // Allow vertical dragging/scrolling without accidentally executing commands
         item.addEventListener('pointerdown', (e) => {
-          e.preventDefault();
-          c.action();
-          bar.value = '';
-          dropdown.classList.remove('active');
+          startY = e.clientY;
+          isDrag = false;
+        });
+
+        item.addEventListener('pointermove', (e) => {
+          if (Math.abs(e.clientY - startY) > 8) {
+            isDrag = true;
+          }
+        });
+
+        item.addEventListener('pointerup', () => {
+          if (!isDrag) {
+            c.action();
+            bar.value = '';
+            dropdown.classList.remove('active');
+          }
         });
 
         dropdown.appendChild(item);
@@ -249,6 +269,7 @@
       dropdown.classList.add('active');
     }
 
+    // Dismiss dropdown when clicking/tapping outside
     document.addEventListener('pointerdown', (e) => {
       if (!dropdown.contains(e.target) && e.target !== bar) {
         dropdown.classList.remove('active');
@@ -265,7 +286,7 @@
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     }
 
-    // Pass generator action
+    // Password generator action
     function quickPass() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
       let pass = '';
