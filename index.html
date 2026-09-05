@@ -162,6 +162,14 @@
       cursor: pointer;
       user-select: none;
     }
+
+    .api-card {
+      background: #0002;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -173,6 +181,67 @@
     </div>
 
     <div id="status-box" style="font-size: 0.9rem; color: var(--muted); padding-left: 4px;">Press "/" to bring up the command menu.</div>
+
+    <div id="panel-weather" class="panel">
+      <div class="panel-head">
+        <span>Live Weather (Open-Meteo API)</span>
+        <span class="panel-close" onclick="closePanel('panel-weather')">&times;</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="weather-city" placeholder="City name (e.g. Miami, London, Tokyo)" style="flex:1;">
+        <button onclick="fetchWeather()">Search</button>
+      </div>
+      <div id="weather-out" class="api-card" style="display:none;"></div>
+    </div>
+
+    <div id="panel-crypto" class="panel">
+      <div class="panel-head">
+        <span>Crypto Prices (CoinGecko API)</span>
+        <span class="panel-close" onclick="closePanel('panel-crypto')">&times;</span>
+      </div>
+      <button onclick="fetchCrypto()">Refresh Prices</button>
+      <div id="crypto-out" class="api-card" style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px; font-family: monospace;">Loading...</div>
+    </div>
+
+    <div id="panel-ip" class="panel">
+      <div class="panel-head">
+        <span>IP & Location Lookup</span>
+        <span class="panel-close" onclick="closePanel('panel-ip')">&times;</span>
+      </div>
+      <button onclick="fetchIP()">Scan My Connection</button>
+      <div id="ip-out" class="api-card" style="display:none; font-family: monospace;"></div>
+    </div>
+
+    <div id="panel-dict" class="panel">
+      <div class="panel-head">
+        <span>Dictionary Lookup</span>
+        <span class="panel-close" onclick="closePanel('panel-dict')">&times;</span>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="dict-word" placeholder="Word to define..." style="flex:1;" onkeydown="if(event.key==='Enter') fetchDefinition()">
+        <button onclick="fetchDefinition()">Lookup</button>
+      </div>
+      <div id="dict-out" class="api-card" style="display:none; max-height:200px; overflow-y:auto;"></div>
+    </div>
+
+    <div id="panel-fact" class="panel">
+      <div class="panel-head">
+        <span>Random Useless Fact</span>
+        <span class="panel-close" onclick="closePanel('panel-fact')">&times;</span>
+      </div>
+      <div id="fact-out" class="api-card">Click below to fetch a fact!</div>
+      <button onclick="fetchFact()">Fetch Fact</button>
+    </div>
+
+    <div id="panel-joke" class="panel">
+      <div class="panel-head">
+        <span>Random Joke</span>
+        <span class="panel-close" onclick="closePanel('panel-joke')">&times;</span>
+      </div>
+      <div id="joke-setup" class="api-card" style="font-weight:bold;">Click below to fetch a joke!</div>
+      <div id="joke-punchline" class="api-card" style="color:var(--accent); display:none;"></div>
+      <button onclick="fetchJoke()">Fetch Joke</button>
+    </div>
 
     <div id="panel-rng" class="panel">
       <div class="panel-head">
@@ -394,6 +463,12 @@
 
     // Slash command registry
     const commands = [
+      { cmd: '/weather', desc: 'Live Weather (Open-Meteo API)', action: () => openPanel('panel-weather') },
+      { cmd: '/crypto', desc: 'Live Crypto Prices (CoinGecko API)', action: () => { openPanel('panel-crypto'); fetchCrypto(); } },
+      { cmd: '/ip', desc: 'Public IP & Geo Scanner API', action: () => { openPanel('panel-ip'); fetchIP(); } },
+      { cmd: '/dict', desc: 'Free English Dictionary API', action: () => openPanel('panel-dict') },
+      { cmd: '/fact', desc: 'Random Facts API', action: () => { openPanel('panel-fact'); fetchFact(); } },
+      { cmd: '/joke', desc: 'Programming & Dad Jokes API', action: () => { openPanel('panel-joke'); fetchJoke(); } },
       { cmd: '/color', desc: 'Color Picker & Hex/RGB palette', action: () => { openPanel('panel-color'); updateColor('#38bdf8'); } },
       { cmd: '/unit', desc: 'Unit Converter (Length/Weight/Temp)', action: () => { openPanel('panel-unit'); switchUnitType(); } },
       { cmd: '/clicker', desc: 'CPS Click Speed Test (5 sec)', action: () => openPanel('panel-clicker') },
@@ -498,6 +573,129 @@
     function closeAllPanels() {
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       stopAudio();
+    }
+
+    // API 1: Weather (Geocoding + Open-Meteo)
+    async function fetchWeather() {
+      const city = document.getElementById('weather-city').value.trim();
+      const out = document.getElementById('weather-out');
+      if (!city) return;
+      out.style.display = 'block';
+      out.innerText = 'Locating and fetching weather...';
+      try {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+        const geoData = await geoRes.json();
+        if (!geoData.results || !geoData.results.length) {
+          out.innerText = 'City not found!';
+          return;
+        }
+        const { latitude, longitude, name, country } = geoData.results[0];
+        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+        const wData = await wRes.json();
+        const curr = wData.current_weather;
+        out.innerHTML = `
+          <strong>${name}, ${country}</strong><br>
+          🌡️ Temperature: <strong>${curr.temperature}°C</strong> (${((curr.temperature * 9/5) + 32).toFixed(1)}°F)<br>
+          💨 Wind Speed: ${curr.windspeed} km/h
+        `;
+      } catch(err) {
+        out.innerText = 'Failed to fetch weather data.';
+      }
+    }
+
+    // API 2: Crypto (CoinGecko)
+    async function fetchCrypto() {
+      const box = document.getElementById('crypto-out');
+      box.innerText = 'Fetching live prices...';
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,dogecoin&vs_currencies=usd');
+        const data = await res.json();
+        box.innerHTML = `
+          <div>BTC: $${data.bitcoin.usd.toLocaleString()}</div>
+          <div>ETH: $${data.ethereum.usd.toLocaleString()}</div>
+          <div>SOL: $${data.solana.usd.toLocaleString()}</div>
+          <div>DOGE: $${data.dogecoin.usd.toFixed(4)}</div>
+        `;
+      } catch(err) {
+        box.innerText = 'Error fetching crypto rates.';
+      }
+    }
+
+    // API 3: IP & Network (ipapi)
+    async function fetchIP() {
+      const out = document.getElementById('ip-out');
+      out.style.display = 'block';
+      out.innerText = 'Tracing connection...';
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        out.innerHTML = `
+          IP: <strong>${data.ip}</strong><br>
+          Location: ${data.city}, ${data.region}, ${data.country_name}<br>
+          ISP: ${data.org}
+        `;
+      } catch(err) {
+        out.innerText = 'Failed to look up IP information.';
+      }
+    }
+
+    // API 4: Dictionary (DictionaryAPI)
+    async function fetchDefinition() {
+      const word = document.getElementById('dict-word').value.trim();
+      const out = document.getElementById('dict-out');
+      if (!word) return;
+      out.style.display = 'block';
+      out.innerText = 'Searching dictionary...';
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        const data = await res.json();
+        if (data.title) {
+          out.innerText = 'No definition found.';
+          return;
+        }
+        const entry = data[0];
+        const def = entry.meanings[0].definitions[0].definition;
+        const part = entry.meanings[0].partOfSpeech;
+        out.innerHTML = `
+          <strong>${entry.word}</strong> <em>(${part})</em><br>
+          ${entry.phonetic ? `<span>${entry.phonetic}</span><br>` : ''}
+          <div style="margin-top: 6px;">${def}</div>
+        `;
+      } catch(err) {
+        out.innerText = 'Dictionary API error.';
+      }
+    }
+
+    // API 5: Random Useless Fact
+    async function fetchFact() {
+      const box = document.getElementById('fact-out');
+      box.innerText = 'Fetching trivia...';
+      try {
+        const res = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random');
+        const data = await res.json();
+        box.innerText = data.text;
+      } catch(err) {
+        box.innerText = 'Could not fetch fact.';
+      }
+    }
+
+    // API 6: Random Joke
+    async function fetchJoke() {
+      const setup = document.getElementById('joke-setup');
+      const punch = document.getElementById('joke-punchline');
+      setup.innerText = 'Fetching joke...';
+      punch.style.display = 'none';
+      try {
+        const res = await fetch('https://official-joke-api.appspot.com/random_joke');
+        const data = await res.json();
+        setup.innerText = data.setup;
+        setTimeout(() => {
+          punch.innerText = data.punchline;
+          punch.style.display = 'block';
+        }, 1200);
+      } catch(err) {
+        setup.innerText = 'Failed to fetch joke.';
+      }
     }
 
     // Color Tool
