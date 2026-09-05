@@ -52,7 +52,7 @@
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 10px;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -104,21 +104,23 @@
     .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .calc-grid button { font-size: 1.15rem; padding: 12px 0; }
     canvas { background: #0002; border: 1px solid var(--border); border-radius: 6px; touch-action: none; cursor: crosshair; }
+
+    /* Todo list item styles */
+    .todo-item { display: flex; align-items: center; gap: 8px; background: #0002; padding: 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .todo-item.done span { text-decoration: line-through; opacity: 0.5; }
+    .todo-item span { flex: 1; word-break: break-word; }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <!-- Main Command Bar -->
     <div class="bar-wrapper">
       <input type="text" id="omni-bar" placeholder="Type / for commands, or run math (e.g. 24*7)..." autocomplete="off">
       <div id="slash-dropdown" class="slash-list"></div>
     </div>
 
-    <!-- Live Status / Mini Output -->
     <div id="status-box" style="font-size: 0.9rem; color: var(--muted); padding-left: 4px;">Press "/" to bring up the command menu.</div>
 
-    <!-- Countdown Timer Panel -->
     <div id="panel-timer" class="panel">
       <div class="panel-head">
         <span>Countdown Timer</span>
@@ -132,7 +134,60 @@
       </div>
     </div>
 
-    <!-- Notepad Panel -->
+    <div id="panel-todo" class="panel">
+      <div class="panel-head">
+        <span>Interactive Tasks</span>
+        <span class="panel-close" onclick="closePanel('panel-todo')">&times;</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="todo-input" placeholder="New task..." style="flex: 1;" onkeydown="if(event.key==='Enter') addTodo()">
+        <button onclick="addTodo()">Add</button>
+      </div>
+      <div id="todo-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <div id="panel-count" class="panel">
+      <div class="panel-head">
+        <span>Word & Character Counter</span>
+        <span class="panel-close" onclick="closePanel('panel-count')">&times;</span>
+      </div>
+      <textarea id="counter-text" rows="4" placeholder="Type or paste text here..." oninput="updateCounts()"></textarea>
+      <div style="display: flex; justify-content: space-around; font-family: monospace; font-size: 0.95rem; color: var(--accent);">
+        <span id="stat-words">Words: 0</span>
+        <span id="stat-chars">Chars: 0</span>
+        <span id="stat-sentences">Sentences: 0</span>
+      </div>
+    </div>
+
+    <div id="panel-qr" class="panel">
+      <div class="panel-head">
+        <span>QR Code Generator</span>
+        <span class="panel-close" onclick="closePanel('panel-qr')">&times;</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <input type="text" id="qr-input" placeholder="Paste URL or text..." style="flex: 1;">
+        <button onclick="generateQR()">Generate</button>
+      </div>
+      <div style="display: flex; justify-content: center; padding: 8px;">
+        <img id="qr-img" style="max-width: 180px; display: none; border-radius: 8px;" alt="QR Code">
+      </div>
+    </div>
+
+    <div id="panel-case" class="panel">
+      <div class="panel-head">
+        <span>Case Converter & Base64</span>
+        <span class="panel-close" onclick="closePanel('panel-case')">&times;</span>
+      </div>
+      <textarea id="case-text" rows="3" placeholder="Input text..."></textarea>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <button style="flex: 1;" onclick="convertCase('upper')">UPPERCASE</button>
+        <button style="flex: 1;" onclick="convertCase('lower')">lowercase</button>
+        <button style="flex: 1;" onclick="convertCase('title')">Title Case</button>
+        <button style="flex: 1;" onclick="convertCase('b64enc')">Encode Base64</button>
+        <button style="flex: 1;" onclick="convertCase('b64dec')">Decode Base64</button>
+      </div>
+    </div>
+
     <div id="panel-note" class="panel">
       <div class="panel-head">
         <span>Persistent Scratchpad</span>
@@ -142,7 +197,6 @@
       <button onclick="localStorage.removeItem('omni_note'); document.getElementById('notepad').value='';">Clear Note</button>
     </div>
 
-    <!-- Calculator Panel with ÷ and × -->
     <div id="panel-calc" class="panel">
       <div class="panel-head">
         <span>Calculator</span>
@@ -154,17 +208,14 @@
         <button onclick="pressCalc('8')">8</button>
         <button onclick="pressCalc('9')">9</button>
         <button onclick="pressCalc('/')">÷</button>
-
         <button onclick="pressCalc('4')">4</button>
         <button onclick="pressCalc('5')">5</button>
         <button onclick="pressCalc('6')">6</button>
         <button onclick="pressCalc('*')">×</button>
-
         <button onclick="pressCalc('1')">1</button>
         <button onclick="pressCalc('2')">2</button>
         <button onclick="pressCalc('3')">3</button>
         <button onclick="pressCalc('-')">-</button>
-
         <button onclick="pressCalc('0')">0</button>
         <button onclick="pressCalc('.')">.</button>
         <button onclick="evalCalc()">=</button>
@@ -173,7 +224,6 @@
       <button style="background: #e11d48; color:#fff;" onclick="document.getElementById('calc-display').value=''">Clear</button>
     </div>
 
-    <!-- Drawing Board Panel -->
     <div id="panel-draw" class="panel">
       <div class="panel-head">
         <span>Touch Canvas</span>
@@ -183,7 +233,6 @@
       <button onclick="clearCanvas()">Clear Canvas</button>
     </div>
 
-    <!-- Stopwatch Panel -->
     <div id="panel-sw" class="panel">
       <div class="panel-head">
         <span>Stopwatch</span>
@@ -205,11 +254,17 @@
 
     // Slash command registry
     const commands = [
+      { cmd: '/todo', desc: 'Open interactive task list', action: () => openPanel('panel-todo') },
+      { cmd: '/qr', desc: 'Generate QR code', action: () => openPanel('panel-qr') },
+      { cmd: '/count', desc: 'Word & sentence counter', action: () => openPanel('panel-count') },
+      { cmd: '/case', desc: 'Text cases & Base64 encoder', action: () => openPanel('panel-case') },
       { cmd: '/timer', desc: 'Open Countdown Timer', action: () => openPanel('panel-timer') },
       { cmd: '/stopwatch', desc: 'Open Stopwatch', action: () => openPanel('panel-sw') },
       { cmd: '/notes', desc: 'Open persistent notepad', action: () => openPanel('panel-note') },
       { cmd: '/draw', desc: 'Open scratchpad canvas', action: () => openPanel('panel-draw') },
       { cmd: '/calc', desc: 'Open full calculator', action: () => openPanel('panel-calc') },
+      { cmd: '/flip', desc: 'Flip a coin (Heads/Tails)', action: flipCoin },
+      { cmd: '/roll', desc: 'Roll a standard 6-sided die', action: rollDice },
       { cmd: '/pass', desc: 'Generate strong password to clipboard', action: quickPass },
       { cmd: '/theme', desc: 'Toggle Dark / Light UI theme', action: () => document.body.classList.toggle('light-theme') },
       { cmd: '/clear', desc: 'Close all open active panels', action: closeAllPanels }
@@ -292,7 +347,6 @@
       dropdown.classList.add('active');
     }
 
-    // Dismiss dropdown when clicking/tapping outside
     document.addEventListener('pointerdown', (e) => {
       if (!dropdown.contains(e.target) && e.target !== bar) {
         dropdown.classList.remove('active');
@@ -309,13 +363,93 @@
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     }
 
-    // Password generator action
+    // Mini Utility Actions
+    function flipCoin() {
+      const res = Math.random() < 0.5 ? '🪙 Result: Heads' : '🪙 Result: Tails';
+      statusBox.innerText = res;
+    }
+
+    function rollDice() {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      statusBox.innerText = `🎲 You rolled a ${roll}!`;
+    }
+
     function quickPass() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
       let pass = '';
       for (let i = 0; i < 16; i++) pass += chars[Math.floor(Math.random() * chars.length)];
       navigator.clipboard.writeText(pass).catch(() => {});
       statusBox.innerText = `Copied generated password: ${pass}`;
+    }
+
+    // Interactive Todo Logic
+    let todos = JSON.parse(localStorage.getItem('omni_todos') || '[]');
+    function renderTodos() {
+      const list = document.getElementById('todo-list');
+      list.innerHTML = '';
+      todos.forEach((t, i) => {
+        const item = document.createElement('div');
+        item.className = `todo-item ${t.done ? 'done' : ''}`;
+        item.innerHTML = `
+          <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})">
+          <span>${t.text}</span>
+          <button style="background: #e11d48; padding: 2px 6px; font-size: 0.8rem; color:#fff;" onclick="deleteTodo(${i})">&times;</button>
+        `;
+        list.appendChild(item);
+      });
+      localStorage.setItem('omni_todos', JSON.stringify(todos));
+    }
+    function addTodo() {
+      const input = document.getElementById('todo-input');
+      if (!input.value.trim()) return;
+      todos.push({ text: input.value.trim(), done: false });
+      input.value = '';
+      renderTodos();
+    }
+    function toggleTodo(i) {
+      todos[i].done = !todos[i].done;
+      renderTodos();
+    }
+    function deleteTodo(i) {
+      todos.splice(i, 1);
+      renderTodos();
+    }
+    renderTodos();
+
+    // Word Counter Logic
+    function updateCounts() {
+      const text = document.getElementById('counter-text').value;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      const sentences = text.trim() ? (text.match(/[^.!?]+[.!?]+/g) || []).length : 0;
+      document.getElementById('stat-words').innerText = `Words: ${words}`;
+      document.getElementById('stat-chars').innerText = `Chars: ${chars}`;
+      document.getElementById('stat-sentences').innerText = `Sentences: ${sentences}`;
+    }
+
+    // QR Code Generator (Uses SVG-based public endpoint)
+    function generateQR() {
+      const val = document.getElementById('qr-input').value.trim();
+      if (!val) return;
+      const img = document.getElementById('qr-img');
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(val)}`;
+      img.style.display = 'block';
+    }
+
+    // Text Converter Logic
+    function convertCase(type) {
+      const el = document.getElementById('case-text');
+      if (type === 'upper') el.value = el.value.toUpperCase();
+      if (type === 'lower') el.value = el.value.toLowerCase();
+      if (type === 'title') {
+        el.value = el.value.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+      }
+      if (type === 'b64enc') {
+        try { el.value = btoa(el.value); } catch(e) { statusBox.innerText = "Encoding error!"; }
+      }
+      if (type === 'b64dec') {
+        try { el.value = atob(el.value); } catch(e) { statusBox.innerText = "Invalid Base64!"; }
+      }
     }
 
     // Countdown Timer logic
@@ -368,16 +502,10 @@
 
     // Calculator logic
     const calc = document.getElementById('calc-display');
-    function pressCalc(v) { 
-      calc.value += v; 
-    }
+    function pressCalc(v) { calc.value += v; }
     function evalCalc() {
-      try { 
-        calc.value = Function('"use strict";return (' + calc.value + ')')(); 
-      }
-      catch { 
-        calc.value = 'Error'; 
-      }
+      try { calc.value = Function('"use strict";return (' + calc.value + ')')(); }
+      catch { calc.value = 'Error'; }
     }
 
     // Touch & Pointer Canvas logic
