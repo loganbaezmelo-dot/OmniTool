@@ -102,19 +102,23 @@
     button:hover { opacity: 0.9; }
 
     .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .calc-grid button { font-size: 1.15rem; padding: 12px 0; }
     canvas { background: #0002; border: 1px solid var(--border); border-radius: 6px; touch-action: none; cursor: crosshair; }
   </style>
 </head>
 <body>
 
   <div class="container">
+    <!-- Main Command Bar -->
     <div class="bar-wrapper">
       <input type="text" id="omni-bar" placeholder="Type / for commands, or run math (e.g. 24*7)..." autocomplete="off">
       <div id="slash-dropdown" class="slash-list"></div>
     </div>
 
+    <!-- Live Status / Mini Output -->
     <div id="status-box" style="font-size: 0.9rem; color: var(--muted); padding-left: 4px;">Press "/" to bring up the command menu.</div>
 
+    <!-- Countdown Timer Panel -->
     <div id="panel-timer" class="panel">
       <div class="panel-head">
         <span>Countdown Timer</span>
@@ -128,6 +132,7 @@
       </div>
     </div>
 
+    <!-- Notepad Panel -->
     <div id="panel-note" class="panel">
       <div class="panel-head">
         <span>Persistent Scratchpad</span>
@@ -137,21 +142,38 @@
       <button onclick="localStorage.removeItem('omni_note'); document.getElementById('notepad').value='';">Clear Note</button>
     </div>
 
+    <!-- Calculator Panel with ÷ and × -->
     <div id="panel-calc" class="panel">
       <div class="panel-head">
         <span>Calculator</span>
         <span class="panel-close" onclick="closePanel('panel-calc')">&times;</span>
       </div>
-      <input type="text" id="calc-display" readonly style="text-align: right; font-family: monospace;">
+      <input type="text" id="calc-display" readonly style="text-align: right; font-family: monospace; font-size: 1.2rem;">
       <div class="calc-grid">
-        <button onclick="pressCalc('7')">7</button><button onclick="pressCalc('8')">8</button><button onclick="pressCalc('9')">9</button><button onclick="pressCalc('/')">/</button>
-        <button onclick="pressCalc('4')">4</button><button onclick="pressCalc('5')">5</button><button onclick="pressCalc('6')">6</button><button onclick="pressCalc('*')">*</button>
-        <button onclick="pressCalc('1')">1</button><button onclick="pressCalc('2')">2</button><button onclick="pressCalc('3')">3</button><button onclick="pressCalc('-')">-</button>
-        <button onclick="pressCalc('0')">0</button><button onclick="pressCalc('.')">.</button><button onclick="evalCalc()">=</button><button onclick="pressCalc('+')">+</button>
+        <button onclick="pressCalc('7')">7</button>
+        <button onclick="pressCalc('8')">8</button>
+        <button onclick="pressCalc('9')">9</button>
+        <button onclick="pressCalc('/')">÷</button>
+
+        <button onclick="pressCalc('4')">4</button>
+        <button onclick="pressCalc('5')">5</button>
+        <button onclick="pressCalc('6')">6</button>
+        <button onclick="pressCalc('*')">×</button>
+
+        <button onclick="pressCalc('1')">1</button>
+        <button onclick="pressCalc('2')">2</button>
+        <button onclick="pressCalc('3')">3</button>
+        <button onclick="pressCalc('-')">-</button>
+
+        <button onclick="pressCalc('0')">0</button>
+        <button onclick="pressCalc('.')">.</button>
+        <button onclick="evalCalc()">=</button>
+        <button onclick="pressCalc('+')">+</button>
       </div>
       <button style="background: #e11d48; color:#fff;" onclick="document.getElementById('calc-display').value=''">Clear</button>
     </div>
 
+    <!-- Drawing Board Panel -->
     <div id="panel-draw" class="panel">
       <div class="panel-head">
         <span>Touch Canvas</span>
@@ -161,6 +183,7 @@
       <button onclick="clearCanvas()">Clear Canvas</button>
     </div>
 
+    <!-- Stopwatch Panel -->
     <div id="panel-sw" class="panel">
       <div class="panel-head">
         <span>Stopwatch</span>
@@ -202,7 +225,8 @@
         dropdown.classList.remove('active');
         if (val.trim()) {
           try {
-            const res = Function('"use strict";return (' + val + ')')();
+            const cleanVal = val.replace(/×/g, '*').replace(/÷/g, '/');
+            const res = Function('"use strict";return (' + cleanVal + ')')();
             if (res !== undefined && !isNaN(res)) statusBox.innerText = `Result: ${res}`;
           } catch(e) {
             statusBox.innerText = 'Press "/" to bring up the command menu.';
@@ -243,7 +267,6 @@
         let startY = 0;
         let isDrag = false;
 
-        // Allow vertical dragging/scrolling without accidentally executing commands
         item.addEventListener('pointerdown', (e) => {
           startY = e.clientY;
           isDrag = false;
@@ -345,10 +368,16 @@
 
     // Calculator logic
     const calc = document.getElementById('calc-display');
-    function pressCalc(v) { calc.value += v; }
+    function pressCalc(v) { 
+      calc.value += v; 
+    }
     function evalCalc() {
-      try { calc.value = Function('"use strict";return (' + calc.value + ')')(); }
-      catch { calc.value = 'Error'; }
+      try { 
+        calc.value = Function('"use strict";return (' + calc.value + ')')(); 
+      }
+      catch { 
+        calc.value = 'Error'; 
+      }
     }
 
     // Touch & Pointer Canvas logic
